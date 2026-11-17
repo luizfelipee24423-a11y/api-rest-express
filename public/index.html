@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Usuários</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { max-width: 620px; margin: 44px auto; padding: 0 20px; background-color: #f4f4f9; color: #333; }
+    h1 { text-align: center; margin-bottom: 24px; }
+    .input-container { display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; min-width: 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+    button { padding: 10px 16px; border: none; background-color: #28a745; color: white; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background-color: #218838; }
+    .btn-edit { background-color: #2563eb; }
+    .btn-edit:hover { background-color: #1e40af; }
+    .btn-delete { background-color: #dc3545; }
+    .btn-delete:hover { background-color: #bd2130; }
+    ul { list-style: none; padding: 0; }
+    li { background: white; padding: 12px 16px; margin-bottom: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 2px 4px rgba(0,0,0,.05); }
+    .user-info { min-width: 0; overflow-wrap: anywhere; }
+    .message { min-height: 20px; color: #bd2130; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Gerenciador de Usuários</h1>
+  <form class="input-container" id="userForm">
+    <input type="text" id="userInput" placeholder="Nome do usuário..." aria-label="Nome do usuário" required>
+    <button type="submit">Adicionar</button>
+  </form>
+  <p id="message" class="message" role="status"></p>
+  <ul id="userList"></ul>
+  <script>
+    const API_URL = "/usuarios";
+    const userList = document.getElementById("userList");
+    const userInput = document.getElementById("userInput");
+    const message = document.getElementById("message");
+
+    async function fetchUsers() {
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error("Erro ao buscar usuários");
+        const users = await response.json();
+        renderUsers(users);
+        message.textContent = "";
+      } catch (error) {
+        message.textContent = "Não foi possível carregar os usuários.";
+        console.error(error);
+      }
+    }
+
+    function renderUsers(users) {
+      userList.replaceChildren();
+      for (const user of users) {
+        const li = document.createElement("li");
+        const info = document.createElement("span");
+        info.className = "user-info";
+        info.textContent = `#${user.id} - ${user.nome}`;
+        const editButton = document.createElement("button");
+        editButton.className = "btn-edit";
+        editButton.textContent = "Editar";
+        editButton.type = "button";
+        editButton.addEventListener("click", () => editUser(user));
+        const button = document.createElement("button");
+        button.className = "btn-delete";
+        button.textContent = "Excluir";
+        button.type = "button";
+        button.addEventListener("click", () => deleteUser(user.id));
+        li.append(info, editButton, button);
+        userList.append(li);
+      }
+    }
+
+    async function createUser(event) {
+      event.preventDefault();
+      const nome = userInput.value.trim();
+      if (!nome) return;
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome })
+        });
+        if (!response.ok) throw new Error("Erro ao cadastrar usuário");
+        userInput.value = "";
+        await fetchUsers();
+      } catch (error) {
+        message.textContent = "Não foi possível adicionar o usuário.";
+        console.error(error);
+      }
+    }
+
+    async function editUser(user) {
+      const novoNome = window.prompt("Novo nome do usuario:", user.nome);
+      if (novoNome === null || !novoNome.trim()) return;
+      try {
+        const response = await fetch(`${API_URL}/${user.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome: novoNome.trim() })
+        });
+        if (!response.ok) throw new Error("Erro ao atualizar usuario");
+        await fetchUsers();
+      } catch (error) {
+        message.textContent = "Nao foi possivel atualizar o usuario.";
+        console.error(error);
+      }
+    }
+
+    async function deleteUser(id) {
+      try {
+        const response = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error("Erro ao excluir usuário");
+        await fetchUsers();
+      } catch (error) {
+        message.textContent = "Não foi possível excluir o usuário.";
+        console.error(error);
+      }
+    }
+
+    document.getElementById("userForm").addEventListener("submit", createUser);
+    document.addEventListener("DOMContentLoaded", fetchUsers);
+  </script>
+</body>
+</html>
